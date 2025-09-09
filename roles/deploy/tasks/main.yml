@@ -1,0 +1,32 @@
+- name: Créer le dossier de déploiement
+  file:
+    path: /opt/postgres-docker
+    state: directory
+
+- name: Copier docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: /opt/postgres-docker/docker-compose.yml
+
+- name: Copier prometheus.yml
+  copy:
+    src: templates/prometheus.yml
+    dest: /opt/postgres-docker/prometheus.yml
+
+- name: Copier postgres_alerts.yml
+  copy:
+    src: templates/postgres_alerts.yml
+    dest: /opt/postgres-docker/postgres_alerts.yml
+
+- name: Lancer Docker Compose
+  command: docker-compose up -d
+  args:
+    chdir: /opt/postgres-docker
+
+- name: Activer l'extension pg_stat_statements dans PostgreSQL
+  become: yes
+  shell: docker exec -i postgres psql -U {{ postgres_user }} -d {{ postgres_db }} -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements;"
+  args:
+    executable: /bin/bash
+  ignore_errors: yes
+

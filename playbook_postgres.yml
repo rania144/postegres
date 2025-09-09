@@ -1,0 +1,10 @@
+- hosts: server
+  become: yes
+  vars:
+    postgres_version: "17"
+    postgres_user: "myuser"
+    postgres_password: "mypassword"
+    postgres_db: "mydb"
+  roles:
+    - deploy
+

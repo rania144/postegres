@@ -1,0 +1,12 @@
+groups:
+  - name: postgres_alerts
+    rules:
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "PostgreSQL instance down"
+          description: "PostgreSQL on {{ $labels.instance }} is not responding"
+

@@ -1,0 +1,46 @@
+---
+- name: Activer pg_stat_statements sur PostgreSQL
+  hosts: server
+  become: true
+  vars:
+    container_name: postgres
+    db_name: mydb
+    db_user: myuser
+    db_password: mypassword
+
+  tasks:
+    - name: Vérifier si pg_stat_statements est déjà activé dans postgresql.conf
+      command: docker exec {{ container_name }} grep -q "pg_stat_statements" /var/lib/postgresql/data/postgresql.conf
+      register: check_pgstat
+      failed_when: false
+      changed_when: false
+
+    - name: Ajouter pg_stat_statements à shared_preload_libraries si absent
+      command: >
+        docker exec {{ container_name }}
+        bash -c "echo \"shared_preload_libraries = 'pg_stat_statements'\" >> /var/lib/postgresql/data/postgresql.conf"
+      when: check_pgstat.rc != 0
+
+    - name: Redémarrer PostgreSQL pour activer l’extension
+      command: docker restart {{ container_name }}
+      when: check_pgstat.rc != 0
+
+    - name: Créer l’extension pg_stat_statements si nécessaire
+      command: >
+        docker exec -i {{ container_name }}
+        psql -U {{ db_user }} -d {{ db_name }} -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements;"
+      environment:
+        PGPASSWORD: "{{ db_password }}"
+
+    - name: Vérifier que l’extension est activée
+      command: >
+        docker exec -i {{ container_name }}
+        psql -U {{ db_user }} -d {{ db_name }} -c "\dx"
+      environment:
+        PGPASSWORD: "{{ db_password }}"
+      register: dx_output
+
+    - name: Afficher la confirmation
+      debug:
+        msg: "{{ dx_output.stdout }}"
+

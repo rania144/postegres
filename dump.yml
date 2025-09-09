@@ -1,0 +1,38 @@
+---
+- name: Sauvegarde de la base PostgreSQL
+  hosts: server
+  become: true
+  vars:
+    backup_dir: /opt/postgres-docker/backups
+    db_container: postgres
+    db_user: myuser
+    db_name: mydb
+    db_password: mypassword
+
+  tasks:
+    - name: Créer le dossier de sauvegarde sur l’hôte si nécessaire
+      file:
+        path: "{{ backup_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Sauvegarder la base avec pg_dump dans le conteneur
+      command: >
+        docker exec -i {{ db_container }}
+        pg_dump -U {{ db_user }} -d {{ db_name }}
+        -F c -f /backups/{{ db_name }}_{{ ansible_date_time.date }}.dump
+      environment:
+        PGPASSWORD: "{{ db_password }}"
+      args:
+        creates: "{{ backup_dir }}/{{ db_name }}_{{ ansible_date_time.date }}.dump"
+
+    - name: Vérifier que la sauvegarde existe sur l’hôte
+      stat:
+        path: "{{ backup_dir }}/{{ db_name }}_{{ ansible_date_time.date }}.dump"
+      register: backup_file
+
+    - name: Afficher le résultat
+      debug:
+        msg: "La sauvegarde a été créée avec succès : {{ backup_file.stat.path }}"
+      when: backup_file.stat.exists
+
